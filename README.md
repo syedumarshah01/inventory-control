@@ -26,7 +26,7 @@ npm run db:seed          # wipe & reseed later with: npm run db:reset
 | `npm run dev` | Start the app |
 | `npm run build` / `npm start` | Production build / serve |
 | `npm test` | Tests for the core rules (split, return, transitions, duplicates) |
-| `npm run db:seed` / `npm run db:reset` | Demo data / wipe + reseed |
+| `npm run db:seed` / `npm run db:reset` | Demo data / wipe + reseed (stop the app first) |
 | `npm run db:backup` | Copy the database into `backups/` |
 
 ## The five screens
