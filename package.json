@@ -1,0 +1,33 @@
+{
+  "name": "inventory-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Inventory Tracker for a broadband company: fiber cable pieces, routers, teams, daily issue/return.",
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0",
+    "test": "vitest run",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:reset": "tsx scripts/reset-db.ts",
+    "db:backup": "tsx scripts/backup-db.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "11.10.0",
+    "next": "^15.5.27",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "22.15.3",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "autoprefixer": "10.4.21",
+    "postcss": "8.5.3",
+    "tailwindcss": "3.4.17",
+    "tsx": "4.19.3",
+    "typescript": "5.8.3",
+    "vitest": "3.1.2"
+  }
+}
