@@ -92,7 +92,7 @@ export function AdjustFiberButton({
         <Btn onClick={submit} disabled={busy || !reason.trim() || (newLengthM === "" && newStatus === "")}>
           {busy ? "Saving…" : "Save correction"}
         </Btn>
-        <Btn variant="ghost" type="button" onClick={() => setOpen(false)}>
+        <Btn variant="secondary" type="button" onClick={() => setOpen(false)}>
           Cancel
         </Btn>
       </div>

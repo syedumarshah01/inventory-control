@@ -1,168 +1,138 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { listDrums, listFiberPieces } from "@/lib/reports";
-import { Badge, Card, EmptyRow, LinkBtn, Td, Th, tableCls } from "@/components/ui";
-import { downloadHref } from "@/lib/links";
-import { fmtM } from "@/lib/dates";
+import { listDrums, listFiberPieces, type PoolRow } from "@/lib/reports";
+import { Badge, Btn, Card, EmptyRow, Input, Td, Th, tableCls } from "@/components/ui";
+import { fmtM, todayStr } from "@/lib/dates";
+import { nextDrumCode } from "@/lib/fiber";
 import { ScrapButton } from "./scrap-button";
+import { ReceiveDrumForm } from "./receive-drum-form";
 
 export const dynamic = "force-dynamic";
 
-const TABS = [
-  { key: "stock", label: "In stock (pool)" },
-  { key: "issued", label: "Issued" },
-  { key: "consumed", label: "Consumed" },
-  { key: "scrap", label: "Scrap" },
-  { key: "drums", label: "Drums" },
-] as const;
-
-type TabKey = (typeof TABS)[number]["key"];
+const FILTERS = [
+  { key: "IN_STOCK", label: "In stock" },
+  { key: "ISSUED", label: "Issued" },
+  { key: "CONSUMED", label: "Used" },
+  { key: "SCRAP", label: "Scrap" },
+  { key: "ALL", label: "All" },
+];
 
 export default async function FiberPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ status?: string; q?: string }>;
 }) {
   await requireUser();
   const sp = await searchParams;
-  const tab = (TABS.find((t) => t.key === sp.tab)?.key ?? "stock") as TabKey;
+  const status = FILTERS.some((f) => f.key === sp.status) ? sp.status! : "IN_STOCK";
+  const q = sp.q?.trim() ?? "";
   const db = getDb();
+  const pieces = listFiberPieces(db, status === "ALL" ? undefined : status).filter(
+    (p) => !q || p.code.toLowerCase().includes(q.toLowerCase()) || p.drum_code.toLowerCase().includes(q.toLowerCase())
+  );
+  const drums = listDrums(db) as Record<string, string | number>[];
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">Fiber Pool</h1>
-        <div className="flex gap-2">
-          <a href={downloadHref("fiber", { status: tab === "drums" ? "ALL" : statusFor(tab) })} className="inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 hover:bg-gray-50">
-            Export CSV
-          </a>
-          <LinkBtn href="/receive" variant="primary">
-            + Receive drum
-          </LinkBtn>
-        </div>
-      </div>
+      <h1 className="text-xl font-semibold">Fiber</h1>
 
-      <div className="flex flex-wrap gap-1.5">
-        {TABS.map((t) => (
+      <Card title="Receive drum">
+        <ReceiveDrumForm nextCode={nextDrumCode(db)} today={todayStr()} />
+      </Card>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {FILTERS.map((f) => (
           <Link
-            key={t.key}
-            href={`/fiber?tab=${t.key}`}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              t.key === tab ? "bg-brand-600 text-white" : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+            key={f.key}
+            href={`/fiber?status=${f.key}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+            className={`rounded px-2.5 py-1.5 text-sm ${
+              f.key === status ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-100"
             }`}
           >
-            {t.label}
+            {f.label}
           </Link>
         ))}
+        <form action="/fiber" method="GET" className="ml-auto flex gap-1.5">
+          <input type="hidden" name="status" value={status} />
+          <Input name="q" defaultValue={q} placeholder="Search…" className="w-36" />
+          <Btn variant="secondary" type="submit">
+            Find
+          </Btn>
+        </form>
       </div>
 
-      {tab === "drums" ? <DrumsTable /> : <PiecesTable tab={tab} />}
-    </div>
-  );
-}
-
-function statusFor(tab: TabKey): string {
-  return tab === "stock" ? "IN_STOCK" : tab === "issued" ? "ISSUED" : tab === "consumed" ? "CONSUMED" : "SCRAP";
-}
-
-function PiecesTable({ tab }: { tab: Exclude<TabKey, "drums"> }) {
-  return <PiecesTableInner tab={tab} />;
-}
-
-async function PiecesTableInner({ tab }: { tab: Exclude<TabKey, "drums"> }) {
-  const rows = listFiberPieces(getDb(), statusFor(tab));
-  return (
-    <Card>
       <div className="scroll-x overflow-x-auto">
         <table className={tableCls}>
           <thead>
             <tr>
-              <Th>Code</Th>
+              <Th>Piece</Th>
               <Th className="text-right">Length</Th>
-              <Th>Drum</Th>
-              <Th>Parent</Th>
-              <Th>Team</Th>
-              <Th className="text-right">{tab === "issued" ? "Issued" : "Age"}</Th>
-              <Th>Actions</Th>
+              <Th>Status</Th>
+              <Th>From / with</Th>
+              <Th className="text-right">Age</Th>
+              <Th />
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && (
-              <EmptyRow cols={7} message={tab === "stock" ? "The pool is empty — receive a drum or close out a team's leftovers." : "Nothing here."} />
-            )}
-            {rows.map((r) => (
-              <tr key={r.id} className="hover:bg-gray-50">
-                <Td className="font-medium text-gray-900">
-                  <Link href={`/fiber/${r.id}`} className="text-brand-700 hover:underline">
-                    {r.code}
+            {pieces.length === 0 && <EmptyRow cols={6} message="Nothing here." />}
+            {pieces.map((p: PoolRow) => (
+              <tr key={p.id}>
+                <Td className="font-medium">
+                  <Link href={`/fiber/${p.id}`} className="hover:underline">
+                    {p.code}
                   </Link>
                 </Td>
-                <Td className="text-right font-semibold">{fmtM(r.length_m)} m</Td>
-                <Td>{r.drum_code}</Td>
+                <Td className="text-right tabular-nums">{fmtM(p.length_m)} m</Td>
                 <Td>
-                  {r.parent_code ? (
-                    <span className="text-gray-600">{r.parent_code}</span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
+                  <Badge status={p.status} />
                 </Td>
-                <Td>{r.team_name ?? <span className="text-gray-400">—</span>}</Td>
-                <Td className="text-right text-gray-500">
-                  {tab === "issued" && r.issued_date ? `${r.issued_date} (${r.age_days} d)` : `${r.age_days} d`}
+                <Td className="text-gray-500">
+                  {p.status === "ISSUED" ? p.team_name : p.drum_code}
+                  {p.parent_code && <span className="text-gray-300"> ← {p.parent_code}</span>}
                 </Td>
+                <Td className="text-right text-gray-400">{p.age_days}d</Td>
                 <Td>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link href={`/fiber/${r.id}`} className="text-sm font-medium text-brand-700 hover:underline">
-                      Detail
-                    </Link>
-                    {tab === "stock" && <ScrapButton pieceId={r.id} code={r.code} />}
-                  </div>
+                  {p.status === "IN_STOCK" && <ScrapButton pieceId={p.id} code={p.code} />}
                 </Td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </Card>
-  );
-}
 
-async function DrumsTable() {
-  const drums = listDrums(getDb()) as Record<string, string | number>[];
-  return (
-    <Card>
-      <div className="scroll-x overflow-x-auto">
-        <table className={tableCls}>
-          <thead>
-            <tr>
-              <Th>Code</Th>
-              <Th>Supplier</Th>
-              <Th className="text-right">Total</Th>
-              <Th className="text-right">In stock</Th>
-              <Th className="text-right">Out</Th>
-              <Th className="text-right">Used</Th>
-              <Th>Received</Th>
-              <Th>Notes</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {drums.length === 0 && <EmptyRow cols={8} message="No drums received yet." />}
-            {drums.map((d) => (
-              <tr key={String(d.id)} className="hover:bg-gray-50">
-                <Td className="font-medium text-gray-900">{String(d.code)}</Td>
-                <Td>{(d.supplier as string) ?? <span className="text-gray-400">—</span>}</Td>
-                <Td className="text-right font-semibold">{fmtM(Number(d.total_length_m))} m</Td>
-                <Td className="text-right">{fmtM(Number(d.stock_m))} m</Td>
-                <Td className="text-right">{fmtM(Number(d.out_m))} m</Td>
-                <Td className="text-right">{fmtM(Number(d.used_m))} m</Td>
-                <Td>{String(d.date_received)}</Td>
-                <Td className="max-w-48 truncate text-gray-500">{(d.notes as string) ?? "—"}</Td>
+      <Card title="Drums">
+        <div className="scroll-x overflow-x-auto">
+          <table className={tableCls}>
+            <thead>
+              <tr>
+                <Th>Code</Th>
+                <Th className="text-right">Total</Th>
+                <Th className="text-right">In stock</Th>
+                <Th className="text-right">Out</Th>
+                <Th className="text-right">Used</Th>
+                <Th>Received</Th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+            </thead>
+            <tbody>
+              {drums.length === 0 && <EmptyRow cols={6} message="No drums yet." />}
+              {drums.map((d) => (
+                <tr key={String(d.id)}>
+                  <Td className="font-medium">
+                    {String(d.code)}
+                    {d.supplier ? <span className="ml-2 text-gray-400">{String(d.supplier)}</span> : null}
+                  </Td>
+                  <Td className="text-right tabular-nums">{fmtM(Number(d.total_length_m))} m</Td>
+                  <Td className="text-right tabular-nums">{fmtM(Number(d.stock_m))} m</Td>
+                  <Td className="text-right tabular-nums">{fmtM(Number(d.out_m))} m</Td>
+                  <Td className="text-right tabular-nums">{fmtM(Number(d.used_m))} m</Td>
+                  <Td className="text-gray-400">{String(d.date_received)}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
   );
 }

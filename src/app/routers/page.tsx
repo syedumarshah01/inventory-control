@@ -2,26 +2,14 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { listRouters, routerStatusCounts } from "@/lib/reports";
-import {
-  Badge,
-  Card,
-  EmptyRow,
-  Input,
-  PillCount,
-  Select,
-  Td,
-  Th,
-  tableCls,
-  
-  LinkBtn,
-} from "@/components/ui";
-import { downloadHref } from "@/lib/links";
+import { Badge, Card, EmptyRow, Input, Select, Td, Th, tableCls } from "@/components/ui";
 import { fmtDate } from "@/lib/dates";
+import { ReceiveRoutersForm } from "./receive-routers-form";
 import { AdjustRouterButton } from "./router-actions";
 
 export const dynamic = "force-dynamic";
 
-const STATUSES = [
+const FILTERS = [
   { key: "ALL", label: "All" },
   { key: "IN_STOCK", label: "In stock" },
   { key: "ISSUED", label: "With teams" },
@@ -37,7 +25,7 @@ export default async function RoutersPage({
 }) {
   await requireUser();
   const sp = await searchParams;
-  const status = sp.status && STATUSES.some((s) => s.key === sp.status) ? sp.status : "ALL";
+  const status = FILTERS.some((f) => f.key === sp.status) ? sp.status! : "ALL";
   const q = sp.q?.trim() ?? "";
   const db = getDb();
   const counts = routerStatusCounts(db);
@@ -45,103 +33,77 @@ export default async function RoutersPage({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">Router Inventory</h1>
-        <div className="flex gap-2">
-          <a
-            href={downloadHref("routers", { status, q })}
-            className="inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Export CSV
-          </a>
-          <LinkBtn href="/receive" variant="primary">
-            + Receive routers
-          </LinkBtn>
-        </div>
-      </div>
+      <h1 className="text-xl font-semibold">Routers</h1>
 
-      <div className="flex flex-wrap gap-1.5">
-        {STATUSES.map((s) => (
+      <Card title="Add routers">
+        <ReceiveRoutersForm />
+      </Card>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {FILTERS.map((f) => (
           <Link
-            key={s.key}
-            href={`/routers?status=${s.key}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              s.key === status
-                ? "bg-brand-600 text-white"
-                : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+            key={f.key}
+            href={`/routers?status=${f.key}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+            className={`rounded px-2.5 py-1.5 text-sm ${
+              f.key === status ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-100"
             }`}
           >
-            {s.label}
-            <PillCount n={counts[s.key] ?? 0} tone={s.key === "FAULTY" ? "red" : s.key === "IN_STOCK" ? "green" : "gray"} />
+            {f.label}
+            <span className="ml-1.5 text-xs opacity-60">{counts[f.key] ?? 0}</span>
           </Link>
         ))}
-      </div>
-
-      <Card>
-        <form className="mb-4 flex flex-wrap items-center gap-2" action="/routers" method="GET">
+        <form action="/routers" method="GET" className="ml-auto flex gap-1.5">
           <input type="hidden" name="status" value={status} />
-          <Input name="q" defaultValue={q} placeholder="Search serial number…" className="max-w-xs" />
+          <Input name="q" defaultValue={q} placeholder="Serial…" className="w-36" />
           <button
             type="submit"
-            className="min-h-11 rounded-lg bg-brand-600 px-4 py-2 text-base font-medium text-white hover:bg-brand-700"
+            className="min-h-10 rounded-md border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            Search
+            Find
           </button>
-          {q && (
-            <Link href={`/routers?status=${status}`} className="text-sm font-medium text-brand-700 hover:underline">
-              Clear
-            </Link>
-          )}
         </form>
+      </div>
 
-        <div className="scroll-x overflow-x-auto">
-          <table className={tableCls}>
-            <thead>
-              <tr>
-                <Th>Serial</Th>
-                <Th>Model</Th>
-                <Th>Status</Th>
-                <Th>Team</Th>
-                <Th>Customer</Th>
-                <Th>Received</Th>
-                <Th>Actions</Th>
+      <div className="scroll-x overflow-x-auto">
+        <table className={tableCls}>
+          <thead>
+            <tr>
+              <Th>Serial</Th>
+              <Th>Model</Th>
+              <Th>Status</Th>
+              <Th>Team / customer</Th>
+              <Th>Received</Th>
+              <Th />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && <EmptyRow cols={6} message="No routers match." />}
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <Td className="font-medium">
+                  <Link href={`/routers/${r.id}`} className="hover:underline">
+                    {r.serial_number}
+                  </Link>
+                </Td>
+                <Td className="text-gray-500">{r.model ?? "—"}</Td>
+                <Td>
+                  <Badge status={r.status} />
+                </Td>
+                <Td className="text-gray-500">{r.team_name ?? r.customer_id ?? "—"}</Td>
+                <Td className="text-gray-400">{fmtDate(r.date_received)}</Td>
+                <Td>
+                  <AdjustRouterButton
+                    routerId={r.id}
+                    serial={r.serial_number}
+                    currentStatus={r.status}
+                    currentModel={r.model}
+                  />
+                </Td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 && <EmptyRow cols={7} message="No routers match." />}
-              {rows.map((r) => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <Td className="font-medium text-gray-900">
-                    <Link href={`/routers/${r.id}`} className="text-brand-700 hover:underline">
-                      {r.serial_number}
-                    </Link>
-                  </Td>
-                  <Td>{r.model ?? "—"}</Td>
-                  <Td>
-                    <Badge status={r.status} />
-                  </Td>
-                  <Td>{r.team_name ?? "—"}</Td>
-                  <Td>{r.customer_id ?? "—"}</Td>
-                  <Td className="whitespace-nowrap text-gray-500">{fmtDate(r.date_received)}</Td>
-                  <Td>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/routers/${r.id}`} className="text-sm font-medium text-brand-700 hover:underline">
-                        History
-                      </Link>
-                      <AdjustRouterButton
-                        routerId={r.id}
-                        serial={r.serial_number}
-                        currentStatus={r.status}
-                        currentModel={r.model}
-                      />
-                    </div>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

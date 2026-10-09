@@ -3,10 +3,9 @@
 @tailwind utilities;
 
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+  @apply bg-white text-gray-900 antialiased;
 }
 
-/* Print: hide chrome, keep the content (handover slips, reports). */
 @media print {
   .no-print {
     display: none !important;
@@ -14,20 +13,8 @@ body {
   body {
     background: white !important;
   }
-  .print-page {
-    box-shadow: none !important;
-    border: none !important;
-  }
-  a[href]::after {
-    content: "";
-  }
-}
-
-/* Nice scrollbar for horizontal table overflow on mobile */
-.scroll-x {
-  -webkit-overflow-scrolling: touch;
 }
 
 input[type="date"] {
-  min-height: 2.75rem;
+  min-height: 2.5rem;
 }

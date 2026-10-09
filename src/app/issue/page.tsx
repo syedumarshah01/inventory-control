@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { listFiberPieces } from "@/lib/reports";
-import { getSettings } from "@/lib/settings";
 import { todayStr } from "@/lib/dates";
 import { IssueClient } from "./issue-client";
 
@@ -23,15 +22,6 @@ export default async function IssuePage() {
        ORDER BY r.serial_number`
     )
     .all() as { serial_number: string; status: string; team: string | null }[];
-  const settings = getSettings(db);
 
-  return (
-    <IssueClient
-      teams={teams}
-      pool={pool}
-      routerIndex={routerIndex}
-      settings={settings}
-      today={todayStr()}
-    />
-  );
+  return <IssueClient teams={teams} pool={pool} routerIndex={routerIndex} today={todayStr()} />;
 }

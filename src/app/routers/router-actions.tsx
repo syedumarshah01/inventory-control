@@ -129,7 +129,7 @@ export function AdjustRouterButton({
           <Btn variant="danger" onClick={sendToSupplier} disabled={busy || !reason.trim()}>
             Return to supplier
           </Btn>
-          <Btn variant="ghost" onClick={() => setOpen(false)}>
+          <Btn variant="secondary" onClick={() => setOpen(false)}>
             Cancel
           </Btn>
         </div>

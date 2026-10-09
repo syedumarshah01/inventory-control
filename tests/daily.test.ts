@@ -3,7 +3,7 @@ import { openMemoryDatabase, type DB } from "../src/lib/db";
 import { receiveDrum, issueFiber, returnFiberItems } from "../src/lib/fiber";
 import { addRoutersBulk, issueRouters, closeOutRouters } from "../src/lib/routers";
 import { submitDailyIssue, submitDailyReturn } from "../src/lib/daily";
-import { getTeamHoldings, cableUsageReport } from "../src/lib/reports";
+import { getTeamHoldings } from "../src/lib/reports";
 
 let db: DB;
 let t1: number;
@@ -71,12 +71,18 @@ describe("acceptance flow: drum → issue 200 m → return 40 m → reuse 40 m p
       .get() as { m: number };
     expect(stock.m).toBe(1800);
 
-    // Cable usage report credits Team 1 with 160 m used and 1 connection.
-    const report = cableUsageReport(db, "2026-01-01", "2026-01-31");
-    const row1 = report.find((r) => r.team === "Team 1");
-    expect(row1?.used_m).toBe(160);
-    expect(row1?.connections).toBe(1);
-    expect(row1?.m_per_conn).toBe(160);
+    // Team 1's day is closed out and credited with the used cable.
+    const conn = db.prepare("SELECT connections FROM daily_connections WHERE team_id = ?").get(t1) as {
+      connections: number;
+    };
+    expect(conn.connections).toBe(1);
+    const used = db
+      .prepare(
+        `SELECT SUM(length_m) AS m FROM fiber_movements
+         WHERE type = 'CONSUMED' AND team_id = ? AND date = '2026-01-03'`
+      )
+      .get(t1) as { m: number };
+    expect(used.m).toBe(160);
   });
 });
 

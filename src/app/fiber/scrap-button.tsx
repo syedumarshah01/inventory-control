@@ -62,7 +62,7 @@ export function ScrapButton({ pieceId, code }: { pieceId: number; code: string }
       <Btn variant="danger" className="min-h-9 px-3 py-1 text-sm" onClick={submit} disabled={busy || !reason.trim()}>
         {busy ? "Saving…" : "Confirm scrap"}
       </Btn>
-      <Btn variant="ghost" className="min-h-9 px-2 py-1 text-sm" onClick={() => setOpen(false)}>
+      <Btn variant="secondary" className="min-h-9 px-2 py-1 text-sm" onClick={() => setOpen(false)}>
         Cancel
       </Btn>
     </div>

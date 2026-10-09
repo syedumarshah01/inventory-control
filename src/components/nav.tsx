@@ -4,15 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 const LINKS = [
-  { href: "/", label: "Dashboard" },
-  { href: "/issue", label: "Daily Issue" },
-  { href: "/return", label: "Daily Return" },
-  { href: "/fiber", label: "Fiber Pool" },
-  { href: "/receive", label: "Receive" },
+  { href: "/", label: "Today" },
+  { href: "/issue", label: "Issue" },
+  { href: "/return", label: "Return" },
+  { href: "/fiber", label: "Fiber" },
   { href: "/routers", label: "Routers" },
-  { href: "/ledger", label: "Team Ledger" },
-  { href: "/reports", label: "Reports" },
-  { href: "/activity", label: "Activity" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -28,41 +24,36 @@ export function Nav() {
   }
 
   return (
-    <header className="no-print sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-2 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 text-lg font-bold text-gray-900">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-black text-white">
-            IT
-          </span>
-          <span className="hidden sm:inline">Inventory Tracker</span>
+    <header className="no-print sticky top-0 z-40 border-b border-gray-200 bg-white">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2">
+        <Link href="/" className="text-base font-semibold text-gray-900">
+          Inventory
         </Link>
-        <button
-          type="button"
-          onClick={logout}
-          className="min-h-10 rounded-lg border border-gray-200 px-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
-        >
-          Sign out
-        </button>
+        <nav className="flex items-center gap-1 overflow-x-auto">
+          {LINKS.map((l) => {
+            const active =
+              l.href === "/" ? pathname === "/" : pathname === l.href || pathname.startsWith(l.href + "/");
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={`rounded-md px-2.5 py-1.5 text-sm ${
+                  active ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={logout}
+            className="ml-1 rounded-md px-2.5 py-1.5 text-sm text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          >
+            Sign out
+          </button>
+        </nav>
       </div>
-      <nav className="scroll-x mx-auto flex max-w-7xl gap-1 overflow-x-auto px-2 pb-2 sm:px-5">
-        {LINKS.map((l) => {
-          const active =
-            l.href === "/" ? pathname === "/" : pathname === l.href || pathname.startsWith(l.href + "/");
-          return (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-brand-600 text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              }`}
-            >
-              {l.label}
-            </Link>
-          );
-        })}
-      </nav>
     </header>
   );
 }
